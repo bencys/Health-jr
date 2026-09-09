@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="theme-color" content="#07111f">
+    <meta name="description" content="HeatGuard - Heatwave Early Warning and Human Thermal Risk System">
+
+    <title>HeatGuard | Heatwave Early Warning System</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIINfQ3f5v7c2Qj3FQ9zYxN1sM4v0Qw5y6E=" crossorigin="">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-shell">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+
+            <div class="brand">
+                <div class="brand-icon">
+                    <span>HG</span>
+                </div>
+
+                <div>
+                    <h1>HeatGuard</h1>
+                    <p>Thermal Intelligence</p>
+                </div>
+            </div>
+
+            <div class="sidebar-status">
+                <span class="status-dot" id="sidebarStatusDot"></span>
+                <span id="sidebarStatusText">Checking data...</span>
+            </div>
+
+            <nav class="navigation">
+
+                <button class="nav-item active" data-view="dashboard">
+                    <span>⌂</span>
+                    <span>Heat Risk</span>
+                </button>
+
+                <button class="nav-item" data-view="heatmap">
+                    <span>◈</span>
+                    <span>Heat Map</span>
+                </button>
+
+                <button class="nav-item" data-view="facilities">
+                    <span>✚</span>
+                    <span>Find Cooling</span>
+                </button>
+
+                <button class="nav-item" data-view="route">
+                    <span>➜</span>
+                    <span>Plan Route</span>
+                </button>
+
+                <button class="nav-item" data-view="worker">
+                    <span>◷</span>
+                    <span>Worker Mode</span>
+                </button>
+
+                <button class="nav-item" data-view="ai">
+                    <span>AI</span>
+                    <span>HeatGuard AI</span>
+                </button>
+
+                <button class="nav-item" data-view="admin">
+                    <span>▦</span>
+                    <span>Monitoring</span>
+                </button>
+
+            </nav>
+
+            <div class="sidebar-footer">
+                <div>
+                    <span>System</span>
+                    <strong id="systemState">Ready</strong>
+                </div>
+
+                <button id="refreshButton" class="icon-button" title="Refresh">
+                    &#x21BB;
+                </button>
+            </div>
+
+        </aside>
+
+        <!-- MAIN -->
+        <main class="main-content">
+
+            <!-- HEADER -->
+            <header class="topbar">
+
+                <button id="mobileMenuButton" class="mobile-menu" title="Toggle sidebar">
+                    &#9776;
+                </button>
+
+                <div class="location-summary">
+                    <div class="location-pin">⌖</div>
+
+                    <div>
+                        <span class="small-label">Selected location</span>
+                        <strong id="locationName">Locating...</strong>
+                        <small id="locationDetails">Waiting for location data</small>
+                    </div>
+                </div>
+
+                <div class="topbar-actions">
+
+                    <div class="data-status">
+                        <span class="status-dot" id="dataStatusDot"></span>
+                        <span id="dataStatusText">INITIALIZING</span>
+                    </div>
+
+                    <button class="header-button" id="locationButton">
+                        Use my location
+                    </button>
+
+                    <button class="header-button primary" data-view-target="ai">
+                        Ask AI
+                    </button>
+
+                </div>
+
+            </header>
+
+            <!-- CONTENT -->
+            <section class="content">
+
+                <!-- LOCATION CONTROL -->
+                <section class="location-control glass-card">
+
+                    <div class="section-heading">
+                        <div>
+                            <span class="eyebrow">LOCATION CONTROL</span>
+                            <h2>Where are you?</h2>
+                        </div>
+
+                        <span class="data-badge unavailable" id="locationSourceBadge">
+                            UNAVAILABLE
+                        </span>
+                    </div>
+
+                    <div class="location-grid">
+
+                        <div class="input-group">
+                            <label for="stateInput">State / Region</label>
+                            <input id="stateInput" type="text" placeholder="e.g. Kerala" autocomplete="off">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="districtInput">District</label>
+                            <input id="districtInput" type="text" placeholder="e.g. Thiruvananthapuram"
+                                autocomplete="off">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="cityInput">City</label>
+                            <input id="cityInput" type="text" placeholder="e.g. Thiruvananthapuram" autocomplete="off">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="localityInput">Locality</label>
+                            <input id="localityInput" type="text" placeholder="e.g. Kazhakkoottam" autocomplete="off">
+                        </div>
+
+                        <button id="searchLocationButton" class="action-button">
+                            Search location
+                        </button>
+
+                    </div>
+
+                    <div class="location-message" id="locationMessage"></div>
+
+                </section>
+
+                <!-- DASHBOARD -->
+                <div class="view active" id="view-dashboard">
+
+                    <div class="dashboard-grid">
+
+                        <!-- PRIMARY RISK -->
+                        <section class="risk-card glass-card">
+
+                            <div class="card-topline">
+                                <span class="eyebrow">CURRENT THERMAL RISK</span>
+                                <span class="data-badge" id="riskDataBadge">
+                                    UNAVAILABLE
+                                </span>
+                            </div>
+
+                            <div class="risk-main">
+
+                                <div class="risk-ring" id="riskRing">
+                                    <div>
+                                        <strong id="riskLevel">—</strong>
+                                        <span>HeatGuard Risk</span>
+                                    </div>
+                                </div>
+
+                                <div class="risk-explanation">
+                                    <h2 id="riskHeadline">
+                                        Waiting for environmental data
+                                    </h2>
+
+                                    <p id="riskDescription">
+                                        Select a location or grant location permission.
+                                    </p>
+
+                                    <div class="risk-meta">
+                                        <span>
+                                            Trend:
+                                            <strong id="riskTrend">—</strong>
+                                        </span>
+
+                                        <span>
+                                            Updated:
+                                            <strong id="lastUpdated">—</strong>
+                                        </span>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </section>
+
+                        <!-- WEATHER METRICS -->
+                        <section class="metrics-card glass-card">
+
+                            <div class="card-topline">
+                                <span class="eyebrow">ENVIRONMENT</span>
+                                <span id="weatherSource" class="data-badge">
+                                    UNAVAILABLE
+                                </span>
+                            </div>
+
+                            <div class="metric-grid">
+
+                                <div class="metric">
+                                    <span class="metric-icon">°</span>
+                                    <div>
+                                        <span>Air temperature</span>
+                                        <strong id="temperature">—</strong>
+                                        <small>Ambient temperature</small>
+                                    </div>
+                                </div>
+
+                                <div class="metric">
+                                    <span class="metric-icon">%</span>
+                                    <div>
+                                        <span>Relative humidity</span>
+                                        <strong id="humidity">—</strong>
+                                        <small>Atmospheric moisture</small>
+                                    </div>
+                                </div>
+
+                                <div class="metric">
+                                    <span class="metric-icon">≈</span>
+                                    <div>
+                                        <span>Wind speed</span>
+                                        <strong id="windSpeed">—</strong>
+                                        <small>10 m wind</small>
+                                    </div>
+                                </div>
+
+                                <div class="metric">
+                                    <span class="metric-icon">☼</span>
+                                    <div>
+                                        <span>Solar radiation</span>
+                                        <strong id="solarRadiation">—</strong>
+                                        <small>Shortwave radiation</small>
+                                    </div>
+                                </div>
+
+                                <div class="metric">
+                                    <span class="metric-icon">↗</span>
+                                    <div>
+                                        <span>Wind direction</span>
+                                        <strong id="windDirection">—</strong>
+                                        <small>Degrees</small>
+                                    </div>
+                                </div>
+
+                                <div class="metric">
+                                    <span class="metric-icon">☁</span>
+                                    <div>
+                                        <span>Cloud cover</span>
+                                        <strong id="cloudCover">—</strong>
+                                        <small>Forecast provider</small>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </section>
+
+                    </div>
+
+                    <!-- THERMAL INDICES -->
+                    <section class="section-block">
+
+                        <div class="section-heading">
+                            <div>
+                                <span class="eyebrow">THERMAL ENGINE</span>
+                                <h2>Human thermal stress</h2>
+                            </div>
+
+                            <span class="technical-note">
+                                Temperature alone is not the risk model
+                            </span>
+                        </div>
+
+                        <div class="index-grid">
+
+                            <article class="index-card glass-card">
+
+                                <div class="index-header">
+                                    <span>Heat Index</span>
+                                    <span class="index-status" id="heatIndexStatus">
+                                        UNAVAILABLE
+                                    </span>
+                                </div>
+
+                                <strong id="heatIndexValue">—</strong>
+
+                                <span class="unit">°C</span>
+
+                                <p id="heatIndexInterpretation">
+                                    Requires temperature and relative humidity.
+                                </p>
+
+                                <details>
+                                    <summary>Methodology</summary>
+                                    <p>
+                                        NOAA/NWS Rothfusz regression is used when
+                                        its applicable input range is satisfied.
+                                    </p>
+                                </details>
+
+                            </article>
+
+                            <article class="index-card glass-card">
+
+                                <div class="index-header">
+                                    <span>WBGT</span>
+                                    <span class="index-status unavailable">
+                                        UNAVAILABLE
+                                    </span>
+                                </div>
+
+                                <strong>—</strong>
+
+                                <span class="unit">°C</span>
+
+                                <p>
+                                    A validated WBGT calculation requires the
+                                    required wet-bulb/globe or equivalent
+                                    environmental inputs.
+                                </p>
+
+                                <details>
+                                    <summary>Why unavailable?</summary>
+                                    <p>
+                                        HeatGuard does not fabricate globe or
+                                        natural wet-bulb measurements.
+                                    </p>
+                                </details>
+
+                            </article>
+
+                            <article class="index-card glass-card">
+
+                                <div class="index-header">
+                                    <span>UTCI</span>
+                                    <span class="index-status unavailable">
+                                        UNAVAILABLE
+                                    </span>
+                                </div>
+
+                                <strong>—</strong>
+
+                                <span class="unit">°C</span>
+
+                                <p>
+                                    UTCI requires air temperature, wind,
+                                    humidity and mean radiant temperature.
+                                </p>
+
+                                <details>
+                                    <summary>Current limitation</summary>
+                                    <p>
+                                        Mean radiant temperature is not fabricated
+                                        when a validated value is unavailable.
+                                    </p>
+                                </details>
+
+                            </article>
+
+                        </div>
+
+                    </section>
+
+                    <!-- WARNING -->
+                    <section class="warning-panel glass-card">
+
+                        <div class="warning-icon">!</div>
+
+                        <div class="warning-content">
+
+                            <div class="card-topline">
+                                <span class="eyebrow">AUTOMATIC WARNING</span>
+                                <span id="warningStatus" class="data-badge">
+                                    UNAVAILABLE
+                                </span>
+                            </div>
+
+                            <h2 id="warningTitle">
+                                No warning generated
+                            </h2>
+
+                            <p id="warningText">
+                                HeatGuard will generate a warning from calculated
+                                thermal risk after environmental data is available.
+                            </p>
+
+                            <div class="warning-factors" id="warningFactors">
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                    <!-- FORECAST -->
+                    <section class="section-block">
+
+                        <div class="section-heading">
+                            <div>
+                                <span class="eyebrow">FORECAST</span>
+                                <h2>Next 24 hours</h2>
+                            </div>
+
+                            <span class="technical-note">
+                                Risk recalculated from forecast conditions
+                            </span>
+                        </div>
+
+                        <div class="forecast-chart glass-card">
+
+                            <div class="chart-container">
+                                <canvas id="forecastCanvas"></canvas>
+                            </div>
+
+                            <div class="forecast-list" id="forecastList">
+                                <div class="empty-state">
+                                    Forecast data unavailable.
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                </div>
+
+                <!-- HEAT MAP -->
+                <div class="view" id="view-heatmap">
+
+                    <section class="full-panel glass-card">
+
+                        <div class="section-heading">
+                            <div>
+                                <span class="eyebrow">GIS INTELLIGENCE</span>
+                                <h2>Heat-risk map</h2>
+                            </div>
+
+                            <span class="data-badge" id="mapDataStatus">
+                                LIVE MAP
+                            </span>
+                        </div>
+
+                        <div id="map" class="map"></div>
+
+                        <div class="map-disclaimer">
+                            Spatial heat surfaces and administrative boundaries
+                            are displayed only when supported by actual data.
+                            HeatGuard does not fabricate geographic heat values.
+                        </div>
+
+                    </section>
+
+                </div>
+
+                <!-- FACILITIES -->
+                <div class="view" id="view-facilities">
+
+                    <section class="section-heading">
+                        <div>
+                            <span class="eyebrow">SAFETY NETWORK</span>
+                            <h2>Nearby facilities</h2>
+                        </div>
+
+                        <button id="refreshFacilitiesButton" class="action-button">
+                            Refresh
+                        </button>
+                    </section>
+
+                    <div class="facility-filter">
+
+                        <button class="filter-button active" data-category="all">
+                            All
+                        </button>
+
+                        <button class="filter-button" data-category="hospital">
+                            Hospitals
+                        </button>
+
+                        <button class="filter-button" data-category="cooling">
+                            Cooling
+                        </button>
+
+                        <button class="filter-button" data-category="park">
+                            Parks
+                        </button>
+
+                        <button class="filter-button" data-category="water">
+                            Water
+                        </button>
+
+                    </div>
+
+                    <div class="facility-grid" id="facilityGrid">
+
+                        <div class="empty-state glass-card">
+                            Facility data will appear after a location is selected.
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- ROUTE -->
+                <div class="view" id="view-route">
+
+                    <section class="glass-card route-panel">
+
+                        <div class="section-heading">
+                            <div>
+                                <span class="eyebrow">HEAT-AWARE NAVIGATION</span>
+                                <h2>Plan your journey</h2>
+                            </div>
+                        </div>
+
+                        <div class="route-form">
+
+                            <div class="route-location">
+                                <span>●</span>
+
+                                <div>
+                                    <label>Starting point</label>
+                                    <strong id="routeStart">
+                                        Selected HeatGuard location
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div class="route-line"></div>
+
+                            <div class="input-group">
+                                <label for="destinationInput">
+                                    Destination
+                                </label>
+
+                                <input id="destinationInput" type="text" placeholder="Enter destination"
+                                    autocomplete="off">
+                            </div>
+
+                            <button id="routeButton" class="action-button primary">
+                                Calculate routes
+                            </button>
+
+                        </div>
+
+                        <div id="routeMap" class="route-map"></div>
+
+                        <div class="route-results" id="routeResults">
+
+                            <div class="empty-state">
+                                Enter a destination to calculate candidate routes.
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                </div>
+
+                <!-- WORKER -->
+                <div class="view" id="view-worker">
+
+                    <section class="glass-card worker-panel">
+
+                        <div class="section-heading">
+
+                            <div>
+                                <span class="eyebrow">FIELD SAFETY</span>
+                                <h2>Worker Mode</h2>
+                            </div>
+
+                            <button id="workerGpsButton" class="action-button">
+                                Start GPS
+                            </button>
+
+                        </div>
+
+                        <div class="worker-status">
+
+                            <div class="worker-risk">
+                                <span>Current thermal risk</span>
+                                <strong id="workerRisk">—</strong>
+                            </div>
+
+                            <div class="worker-progress">
+                                <span>Journey status</span>
+                                <strong id="workerGpsStatus">
+                                    GPS inactive
+                                </strong>
+                            </div>
+
+                        </div>
+
+                        <div class="worker-grid">
+
+                            <div class="glass-card mini-panel">
+
+                                <span>Remaining distance</span>
+                                <strong id="workerDistance">—</strong>
+
+                            </div>
+
+                            <div class="glass-card mini-panel">
+
+                                <span>Estimated travel time</span>
+                                <strong id="workerTime">—</strong>
+
+                            </div>
+
+                            <div class="glass-card mini-panel">
+
+                                <span>Next break</span>
+                                <strong id="nextBreak">Not configured</strong>
+
+                            </div>
+
+                        </div>
+
+                        <div class="shift-config">
+                            <!-- Worker Category Selection -->
+                            <div class="worker-category-group" style="margin-bottom: 20px;">
+                                  <label for="workerType"
+                                    style="display: block; font-weight: bold; margin-bottom: 8px; color: #ffffff;">
+                                        Worker Category:
+                                      </label>
+                                  <select id="workerType"
+                                    style="width: 100%; padding: 10px; border-radius: 6px; background-color: #1e293b; color: #ffffff; border: 1px solid #334155;">
+                                        <option value="agriculture"> Agriculture Worker</option>
+                                        <option value="delivery"> Delivery Partner</option>
+                                        <option value="construction"> Construction Worker</option>
+                                        <option value="outdoor"> General Outdoor Work</option>
+                                      </select>
+                            </div>
+
+                            <div class="section-heading">
+                                <div>
+                                    <span class="eyebrow">WORK SHIFT</span>
+
+                                    <h2>Configure reminders</h2>
+                                </div>
+                            </div>
+
+                            <div class="location-grid">
+
+                                <div class="input-group">
+                                    <label>Shift start</label>
+                                    <input id="shiftStart" type="time">
+                                </div>
+
+                                <div class="input-group">
+                                    <label>Shift end</label>
+                                    <input id="shiftEnd" type="time">
+                                </div>
+
+                                <div class="input-group">
+                                    <label>Break interval</label>
+                                    <select id="breakInterval">
+                                        <option value="30">30 minutes</option>
+                                        <option value="45">45 minutes</option>
+                                        <option value="60">60 minutes</option>
+                                        <option value="90">90 minutes</option>
+                                    </select>
+                                </div>
+
+                                <div class="input-group">
+                                    <label>Hydration reminder</label>
+                                    <select id="hydrationInterval">
+                                        <option value="20">20 minutes</option>
+                                        <option value="30">30 minutes</option>
+                                        <option value="45">45 minutes</option>
+                                        <option value="60">60 minutes</option>
+                                    </select>
+                                </div>
+
+                                <button id="saveShiftButton" class="action-button">
+                                    Save shift
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                        <!-- AI CAMERA SAFETY SCAN -->
+                        <div class="glass-card" style="margin-top:20px;padding:20px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                                <h3 style="margin:0;font-size:1rem;display:flex;align-items:center;gap:8px;">&#128247; AI Camera Safety Scan</h3>
+                                <span style="font-size:0.72rem;background:#3b82f6;color:#fff;padding:2px 8px;border-radius:10px;font-weight:bold;">VISION AI</span>
+                            </div>
+                            <p style="color:#94a3b8;font-size:0.82rem;margin:0 0 14px;">Scan your environment to identify heat exposure risks (clothing, shade, gear).</p>
+                            <div style="position:relative;width:100%;max-width:380px;margin:0 auto;border-radius:8px;background:#0f172a;min-height:200px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                                <video id="cameraVideo" autoplay playsinline style="width:100%;height:auto;display:none;border-radius:8px;"></video>
+                                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                                <div id="cameraPlaceholder" style="color:#64748b;text-align:center;padding:20px;">Camera inactive. Click &ldquo;Start Camera&rdquo; to begin scan.</div>
+                            </div>
+                            <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
+                                <button id="btnStartCam" class="action-button">Start Camera</button>
+                                <button id="btnScanCam" class="action-button primary" style="display:none;">Analyze Safety Risk</button>
+                            </div>
+                            <div id="cameraScanResult" style="margin-top:14px;display:none;padding:12px;border-radius:8px;background:rgba(255,255,255,0.05);color:#f8fafc;font-size:0.88rem;line-height:1.5;"></div>
+                        </div>
+
+                    </section>
+
+                </div>
+
+                <!-- AI -->
+                <div class="view" id="view-ai">
+
+                    <section class="glass-card ai-panel">
+
+                        <div class="ai-header">
+
+                            <div>
+                                <span class="eyebrow">HEATGUARD AI</span>
+                                <h2>Ask about your heat risk</h2>
+                            </div>
+
+                            <span id="aiDataStatus" class="data-badge">
+                                APPLICATION CONTEXT
+                            </span>
+
+                        </div>
+
+                        <div class="suggested-questions">
+
+                            <button data-question="What's the heat risk here?">
+                                Heat risk now
+                            </button>
+
+                            <button data-question="Will the heat get worse this afternoon?">
+                                Forecast
+                            </button>
+
+                            <button data-question="Where is the nearest cooling centre?">
+                                Nearest cooling centre
+                            </button>
+
+                            <button data-question="Which route has lower heat exposure?">
+                                Cooler route
+                            </button>
+
+                            <button data-question="Why is the warning high?">
+                                Why is the warning high?
+                            </button>
+
+                            <button data-question="When should I take a break?">
+                                Work break
+                            </button>
+
+                        </div>
+
+                        <div class="chat-window" id="chatWindow">
+
+                            <div class="chat-message assistant">
+                                <div class="avatar">HG</div>
+
+                                <div class="message">
+                                    <strong>HeatGuard AI</strong>
+
+                                    <p>
+                                        I can explain verified HeatGuard data.
+                                        Current environmental answers require
+                                        application data; I will not invent live
+                                        weather, routes or facilities.
+                                    </p>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <form id="chatForm" class="chat-form">
+
+                            <input id="chatInput" type="text" placeholder="Ask HeatGuard..." autocomplete="off">
+
+                            <button type="submit">
+                                Send
+                            </button>
+
+                        </form>
+
+                    </section>
+
+                </div>
+
+                <!-- ADMIN / MONITORING -->
+                <div class="view" id="view-admin">
+
+                    <section class="section-heading">
+
+                        <div>
+                            <span class="eyebrow">MONITORING</span>
+                            <h2>Regional heat intelligence</h2>
+                        </div>
+
+                        <span class="data-badge">
+                            CLIENT MONITORING
+                        </span>
+
+                    </section>
+
+                    <div class="admin-grid">
+
+                        <div class="glass-card admin-card">
+                            <span>Current risk</span>
+                            <strong id="adminRisk">—</strong>
+                        </div>
+
+                        <div class="glass-card admin-card">
+                            <span>Heat Index</span>
+                            <strong id="adminHeatIndex">—</strong>
+                        </div>
+
+                        <div class="glass-card admin-card">
+                            <span>Forecast peak</span>
+                            <strong id="adminPeak">—</strong>
+                        </div>
+
+                        <div class="glass-card admin-card">
+                            <span>Data status</span>
+                            <strong id="adminDataStatus">—</strong>
+                        </div>
+
+                    </div>
+
+                    <section class="glass-card monitoring-table">
+
+                        <div class="section-heading">
+                            <div>
+                                <span class="eyebrow">DATA TRANSPARENCY</span>
+                                <h2>System state</h2>
+                            </div>
+                        </div>
+
+                        <div class="table-row">
+                            <span>Location</span>
+                            <strong id="monitorLocation">—</strong>
+                        </div>
+
+                        <div class="table-row">
+                            <span>Coordinates</span>
+                            <strong id="monitorCoordinates">—</strong>
+                        </div>
+
+                        <div class="table-row">
+                            <span>Weather source</span>
+                            <strong id="monitorWeatherSource">—</strong>
+                        </div>
+
+                        <div class="table-row">
+                            <span>Last successful update</span>
+                            <strong id="monitorUpdate">—</strong>
+                        </div>
+
+                        <div class="table-row">
+                            <span>GIS facilities</span>
+                            <strong id="monitorFacilities">—</strong>
+                        </div>
+
+                        <div class="table-row">
+                            <span>Health-impact model</span>
+                            <strong>
+                                REQUIRES VALIDATED HISTORICAL DATA
+                            </strong>
+                        </div>
+
+                    </section>
+
+                    <div class="notice-card">
+                        <strong>Production security boundary</strong>
+                        <p>
+                            Administrative authorization, population-health
+                            forecasting, regional alert delivery and protected
+                            messaging providers require a server-side backend.
+                            This browser application does not pretend to provide
+                            those security guarantees.
+                        </p>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="">
+        </script>
+
+    <script src="home.js"></script>
+    <script>
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                window.dispatchEvent(new Event('resize'));
+            }, 500);
+        });
+    </script>
+
+</body>
+
+</html>
